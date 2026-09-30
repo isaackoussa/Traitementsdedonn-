@@ -42,13 +42,38 @@ Cliquez sur **✨ Exemple** pour charger un jeu de ventes contenant des erreurs 
 - **Export** : CSV, CSV Excel français (`;` et décimales à virgule), TSV, Excel, ODS, JSON, JSON Lines, SQL, Markdown, HTML, XML, copie presse-papiers
 - Sauvegarde automatique dans le navigateur, thème clair/sombre, interface adaptée au mobile
 
+## 🔐 Accès protégé (comme Anglais 365)
+
+On entre avec son **e-mail + un code à 6 chiffres** envoyé par Brevo, sans mot de passe.
+- Code valable 10 minutes, 5 essais maximum, 30 s entre deux envois ; seule l'empreinte du code est stockée.
+- Session de 6 mois par appareil, bouton 👤 pour se déconnecter.
+- E-mail de bienvenue à la création du compte et ajout du contact dans Brevo (liste `BREVO_LIST_ID` facultative).
+- **Console admin** sur `/#admin` (clé `ADMIN_KEY`) : comptes, dernière visite, nombre d'ouvertures, **blocage / déblocage** d'un compte.
+- Les fichiers de données ne quittent jamais le navigateur : le serveur ne stocke que les comptes (Netlify Blobs).
+
+## Déploiement (GitHub → Netlify)
+1. Relie un site Netlify à ce dépôt ; `netlify.toml` règle tout (build `npm run build` → `dist/`, fonctions dans `netlify/functions`).
+2. Dans Netlify → Project configuration → **Environment variables**, ajoute :
+   - `BREVO_API_KEY` : ta clé API Brevo (tu peux réutiliser celle d'Anglais 365) ;
+   - `MAIL_FROM` : l'adresse expéditrice validée dans Brevo ;
+   - `ADMIN_KEY` : un mot de passe long pour la console admin ;
+   - facultatif : `MAIL_FROM_NAME`, `BREVO_LIST_ID`, `APP_URL` ;
+   - seulement en cas d'erreur « MissingBlobsEnvironmentError » : `NETLIFY_SITE_ID` et `NETLIFY_BLOBS_TOKEN`.
+3. Redéploie.
+
+Tant que `BREVO_API_KEY` et `MAIL_FROM` ne sont pas configurées, personne ne peut se connecter : c'est voulu. En local sans serveur (`npm start` ou fichier ouvert directement), l'écran de connexion propose **« Continuer en local »** pour tester l'app ; avec `netlify dev` et `MAIL_DRY_RUN=1` (voir `.env.example`), les codes s'affichent dans le terminal.
+
 ## Structure
 
 ```
 index.html        interface
+icon.svg, *.png   icône de l'app (+ manifest.webmanifest : installable sur mobile)
 css/style.css     styles (thèmes clair et sombre)
+js/auth.js        barrière d'accès (e-mail + code) et console admin
 js/core.js        moteur : outils, statistiques, import/export (sans dépendance, testable sous Node)
 js/app.js         logique de l'interface
+netlify/          fonctions serveur : envoi/vérification du code, session, admin (Brevo + Netlify Blobs)
+scripts/build.mjs copie les fichiers du site dans dist/
 vendor/           PapaParse, Chart.js, AlaSQL, SheetJS (licences MIT / Apache-2.0)
 tests/            tests unitaires du moteur
 ```
@@ -68,7 +93,9 @@ Chaque outil est une entrée déclarative de `js/core.js` ; le formulaire et l'a
 ## Tests
 
 ```bash
-npm test
+npm install
+npm test           # moteur de traitement
+npm run typecheck  # fonctions serveur
 ```
 
 ## Note sur SheetJS

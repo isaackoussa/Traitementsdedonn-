@@ -4,8 +4,18 @@
   "description": "Application web locale de traitement de données : nettoyage, transformation, analyse, graphiques, SQL et export.",
   "private": true,
   "scripts": {
+    "build": "node scripts/build.mjs",
     "start": "python3 -m http.server 8000",
-    "test": "node --test tests/*.test.js"
+    "test": "node --test tests/*.test.js",
+    "typecheck": "tsc -p netlify/tsconfig.json"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "@netlify/blobs": "^11.1.1"
+  },
+  "devDependencies": {
+    "@netlify/functions": "^6.0.0",
+    "@types/node": "^22.0.0",
+    "typescript": "~5.9"
+  }
 }

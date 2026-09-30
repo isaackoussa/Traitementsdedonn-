@@ -6,12 +6,18 @@
   <title>DataLab — Traitement de données</title>
   <meta name="description" content="Nettoyer, transformer, analyser, visualiser et exporter des données directement dans le navigateur.">
   <link rel="stylesheet" href="css/style.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧪</text></svg>">
+  <meta name="theme-color" content="#3b5bdb">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="DataLab">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
 </head>
 <body>
   <header class="topbar">
     <button class="icon-btn only-mobile" id="btnMenu" title="Outils" aria-label="Afficher les outils">☰</button>
-    <div class="brand">🧪 <strong>DataLab</strong> <span class="muted" id="datasetName">— aucun jeu de données</span></div>
+    <div class="brand"><img src="icon.svg" alt="" width="24" height="24" class="brand-icon"> <strong>DataLab</strong> <span class="muted" id="datasetName">— aucun jeu de données</span></div>
     <div class="actions">
       <label class="btn primary" title="CSV, TSV, TXT, JSON, Excel (xlsx, xls), ODS">
         📂 Ouvrir<input type="file" id="fileInput" multiple accept=".csv,.tsv,.txt,.json,.xlsx,.xls,.xlsm,.ods" hidden>
@@ -24,6 +30,7 @@
       <button class="icon-btn" id="btnRedo" title="Rétablir (Ctrl+Y)" aria-label="Rétablir">↷</button>
       <button class="btn" id="btnExport" title="Exporter">💾 Exporter</button>
       <button class="icon-btn" id="btnTheme" title="Thème clair / sombre" aria-label="Changer de thème">◐</button>
+      <button class="icon-btn" id="btnAccount" title="Compte" aria-label="Compte et déconnexion" hidden>👤</button>
     </div>
   </header>
 
@@ -177,6 +184,7 @@
   <!-- SheetJS : version à jour depuis le CDN officiel, copie locale en secours hors ligne -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <script>window.XLSX || document.write('<script src="vendor/xlsx.full.min.js"><\/script>');</script>
+  <script src="js/auth.js"></script>
   <script src="js/core.js"></script>
   <script src="js/app.js"></script>
 </body>

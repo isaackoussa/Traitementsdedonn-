@@ -978,5 +978,6 @@
     if (restore()) status('Session précédente restaurée.');
     refresh();
   }
-  init();
+  // l'application ne démarre qu'une fois la barrière d'accès franchie (js/auth.js)
+  if (window.DLAuth) DLAuth.whenReady(init); else init();
 })();
