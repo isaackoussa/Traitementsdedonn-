@@ -45,7 +45,7 @@
         <button role="tab" data-tab="data" class="active">Données</button>
         <button role="tab" data-tab="profile">Profil</button>
         <button role="tab" data-tab="chart">Graphiques</button>
-        <button role="tab" data-tab="sql">SQL</button>
+        <button role="tab" data-tab="code">Code <span class="muted small">SQL · Python · R · JS</span></button>
         <button role="tab" data-tab="result">Résultat <span class="badge" id="resultBadge" hidden>•</span></button>
         <button role="tab" data-tab="datasets">Jeux de données</button>
         <button role="tab" data-tab="history">Historique</button>
@@ -99,19 +99,26 @@
         <div class="chart-box"><canvas id="chartCanvas"></canvas><p class="muted" id="chartMsg"></p></div>
       </section>
 
-      <section class="tab-panel" id="tab-sql">
-        <p class="muted">Interrogez vos données en SQL. Le jeu actuel est la table <code>data</code>, les jeux enregistrés sont disponibles sous leur nom (ex. <code>[mon jeu]</code>). Mettez entre crochets les noms contenant des espaces ou réservés (<code>[total]</code>, <code>[date]</code>…).</p>
-        <textarea id="sqlInput" rows="6" spellcheck="false">SELECT * FROM data LIMIT 20</textarea>
-        <div class="row">
-          <button class="btn primary" id="btnSql">▶ Exécuter (Ctrl+Entrée)</button>
-          <select id="sqlExamples"><option value="">Exemples…</option></select>
-          <span class="muted" id="sqlInfo"></span>
+      <section class="tab-panel" id="tab-code">
+        <div class="row code-bar">
+          <div class="seg" id="codeLangs" role="tablist" aria-label="Langage">
+            <button data-lang="sql" class="active">SQL</button><button data-lang="python">🐍 Python</button><button data-lang="r">R</button><button data-lang="js">JavaScript</button>
+          </div>
+          <select id="codeExamples" aria-label="Exemples"><option value="">Exemples…</option></select>
+          <span class="spacer"></span>
+          <button class="btn primary" id="btnRun">▶ Exécuter <span class="small">(Ctrl+Entrée)</span></button>
         </div>
-        <div class="row" id="sqlActions" hidden>
-          <button class="btn" id="btnSqlApply">Remplacer les données par ce résultat</button>
-          <button class="btn" id="btnSqlSave">Enregistrer comme jeu de données</button>
+        <p class="muted small" id="codeHelp"></p>
+        <textarea id="codeInput" rows="9" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
+        <div class="row"><span class="muted" id="codeInfo"></span></div>
+        <div class="row" id="codeActions" hidden>
+          <button class="btn" id="btnCodeApply">Remplacer les données par ce résultat</button>
+          <button class="btn" id="btnCodeSave">Enregistrer comme jeu de données</button>
+          <button class="btn" id="btnCodeExport">Exporter</button>
         </div>
-        <div class="table-wrap" id="sqlResult"></div>
+        <pre class="console" id="codeOutput" hidden></pre>
+        <div class="code-images" id="codeImages"></div>
+        <div class="table-wrap" id="codeResult" hidden></div>
       </section>
 
       <section class="tab-panel" id="tab-result">
@@ -128,7 +135,7 @@
       <section class="tab-panel" id="tab-datasets">
         <div class="row">
           <button class="btn primary" id="btnSaveCurrent">Enregistrer le jeu actuel</button>
-          <span class="muted">Les jeux enregistrés servent aux jointures, aux unions et aux requêtes SQL multi-tables.</span>
+          <span class="muted">Les jeux enregistrés servent aux jointures, aux unions et au code (SQL, Python, R, JavaScript).</span>
         </div>
         <div id="datasetList"></div>
       </section>
@@ -186,6 +193,7 @@
   <script>window.XLSX || document.write('<script src="vendor/xlsx.full.min.js"><\/script>');</script>
   <script src="js/auth.js"></script>
   <script src="js/core.js"></script>
+  <script src="js/code.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

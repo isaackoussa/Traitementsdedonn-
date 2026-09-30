@@ -119,8 +119,20 @@ svg.hist rect { fill: var(--accent); opacity: .75; } svg.hist rect:hover { opaci
 .chart-controls .row { grid-column: 1 / -1; margin: 0; }
 .chart-box { position: relative; flex: 1; min-height: 340px; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; }
 
-/* SQL */
-#sqlInput { min-height: 110px; font-size: 13px; }
+/* Code : SQL, Python, R, JavaScript */
+.code-bar { margin-top: 0; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--panel); }
+.seg button { font: inherit; border: 0; background: none; color: var(--text); padding: 6px 12px; cursor: pointer; border-right: 1px solid var(--border); }
+.seg button:last-child { border-right: 0; }
+.seg button.active { background: var(--accent); color: var(--accent-text); font-weight: 600; }
+#codeHelp { margin: 0 0 8px; } #codeHelp code { background: var(--panel-2); padding: 0 4px; border-radius: 4px; }
+#codeInput { min-height: 170px; font: 13px/1.5 var(--mono); tab-size: 4; flex: none; }
+.console { background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font: 12px/1.45 var(--mono); white-space: pre-wrap; word-break: break-word; max-height: 320px; overflow: auto; margin: 0 0 10px; flex: none; }
+.console.err { background: var(--danger-bg); color: var(--danger); border-color: transparent; }
+.code-images { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; flex: none; }
+.code-images img { max-width: min(100%, 760px); height: auto; background: #fff; border: 1px solid var(--border); border-radius: 8px; }
+#codeResult { flex: none; max-height: 520px; }
+.tabs .small { font-weight: 400; }
 
 /* jeux de données / historique */
 .ds-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); background: var(--panel); border-radius: var(--radius); margin-bottom: 8px; flex-wrap: wrap; }

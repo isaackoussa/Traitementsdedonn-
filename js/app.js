@@ -10,7 +10,7 @@
   const S = {
     data: DT.ds([], []), name: '', datasets: {}, log: [], undo: [], redo: [],
     page: 0, pageSize: 100, search: '', sort: null, view: null,
-    tool: null, result: null, sqlResult: null, tab: 'data', chart: null,
+    tool: null, result: null, codeResult: null, tab: 'data', chart: null,
   };
 
   // ------------------------------------------------------------------ utilitaires UI
@@ -275,7 +275,7 @@
       wrap.innerHTML = `<div class="empty-state dropzone"><h2>Bienvenue dans DataLab 🧪</h2>
         <p>Importez un fichier <b>CSV, TSV, JSON, Excel ou ODS</b> (glisser-déposer accepté), collez des données, ou essayez l'exemple.</p>
         <div class="row"><button class="btn primary" data-act="open">📂 Ouvrir un fichier</button><button class="btn" data-act="paste">📋 Coller</button><button class="btn" data-act="sample">✨ Charger l'exemple</button></div>
-        <p class="small">${DT.TOOLS.length} outils : nettoyage, colonnes, lignes, calculs, texte, dates, restructuration, analyse statistique, graphiques, SQL, export…<br>Tout est traité localement dans votre navigateur.</p></div>`;
+        <p class="small">${DT.TOOLS.length} outils : nettoyage, colonnes, lignes, calculs, texte, dates, restructuration, analyse statistique, graphiques, code SQL / Python / R / JavaScript, export…<br>Tout est traité localement dans votre navigateur.</p></div>`;
       $('#tableInfo').textContent = ''; $('#pager').innerHTML = '';
       return;
     }
@@ -520,7 +520,7 @@
     else if (S.tab === 'chart') renderChartControls();
     else if (S.tab === 'datasets') renderDatasets();
     else if (S.tab === 'history') renderHistory();
-    else if (S.tab === 'sql') renderSqlExamples();
+    else if (S.tab === 'code') renderCode();
   }
 
   // ---- résultat
@@ -691,53 +691,74 @@
     c.toBlob(b => download(b, `graphique_${$('#chartType').value}.png`, 'image/png'));
   }
 
-  // ---- SQL
-  const sqlName = n => n.replace(/[[\]]/g, '');
-  function registerTables() {
-    const reg = (name, d) => {
-      const t = sqlName(name);
-      alasql(`CREATE TABLE IF NOT EXISTS [${t}]`);
-      alasql.tables[t].data = d.rows;
-    };
-    reg('data', S.data);
-    for (const [n, d] of Object.entries(S.datasets)) reg(n, d);
-  }
-  function runSql() {
-    if (!window.alasql) return toast('Le moteur SQL n\'est pas chargé (connexion Internet requise).');
-    const q = $('#sqlInput').value.trim();
-    if (!q) return;
-    try {
-      registerTables();
-      const t0 = performance.now();
-      let res = alasql(q);
-      if (Array.isArray(res) && res.length && Array.isArray(res[0])) res = res[res.length - 1];
-      if (!Array.isArray(res)) { $('#sqlResult').innerHTML = `<p style="padding:10px">Résultat : <b>${esc(JSON.stringify(res))}</b></p>`; $('#sqlActions').hidden = true; return; }
-      const d = DT.fromRecords(res.map(r => (r && typeof r === 'object' ? r : { valeur: r })));
-      S.sqlResult = d;
-      $('#sqlResult').innerHTML = tableHTML(d, 1000);
-      $('#sqlInfo').textContent = `${fmtInt(d.rows.length)} ligne(s) en ${Math.round(performance.now() - t0)} ms`;
-      $('#sqlActions').hidden = false;
-    } catch (e) {
-      $('#sqlResult').innerHTML = `<div class="error" style="margin:10px">${esc(e.message)}</div>`;
-      $('#sqlActions').hidden = true;
-    }
-  }
-  function renderSqlExamples() {
+  // ---- Code : SQL, Python, R, JavaScript (moteurs dans js/code.js)
+  const CODE_KEY = 'datalab:code';
+  const codeState = (() => { try { return JSON.parse(localStorage.getItem(CODE_KEY)) || {}; } catch (e) { return {}; } })();
+  let codeLang = DLCode.LANGS[codeState.lang] ? codeState.lang : 'sql';
+  const codeDrafts = codeState.drafts || {};
+  let codeRunning = false;
+  const saveCodeState = debounce(() => {
+    try { localStorage.setItem(CODE_KEY, JSON.stringify({ lang: codeLang, drafts: codeDrafts })); } catch (e) { /* ignoré */ }
+  }, 400);
+
+  function renderCode() {
     const d = S.data, types = colTypes(d);
-    const q = c => `[${c}]`;
-    const nums = d.columns.filter(c => types[c] === 'nombre');
-    const num = nums.find(c => !/(^id|id$|^id_|_id)/i.test(c)) || nums[0], cat = d.columns.find(c => types[c] === 'texte');
-    const ex = [['Aperçu', 'SELECT * FROM data LIMIT 20'], ['Nombre de lignes', 'SELECT COUNT(*) AS nb FROM data']];
-    if (cat) ex.push([`Comptage par ${cat}`, `SELECT ${q(cat)}, COUNT(*) AS nb\nFROM data\nGROUP BY ${q(cat)}\nORDER BY nb DESC`]);
-    if (cat && num) ex.push([`Stats de ${num} par ${cat}`, `SELECT ${q(cat)}, COUNT(*) AS nb, SUM(${q(num)}) AS somme, AVG(${q(num)}) AS moyenne, MIN(${q(num)}) AS mini, MAX(${q(num)}) AS maxi\nFROM data\nGROUP BY ${q(cat)}\nORDER BY somme DESC`]);
-    if (num) ex.push([`Top 10 par ${num}`, `SELECT * FROM data\nWHERE ${q(num)} IS NOT NULL\nORDER BY ${q(num)} DESC\nLIMIT 10`]);
-    if (cat) ex.push(['Valeurs distinctes', `SELECT DISTINCT ${q(cat)} FROM data ORDER BY ${q(cat)}`]);
-    const other = Object.keys(S.datasets)[0];
-    if (other) {
-      const shared = d.columns.find(c => S.datasets[other].columns.includes(c));
-      if (shared) ex.push([`Jointure avec « ${other} »`, `SELECT d.*, o.*\nFROM data AS d\nLEFT JOIN [${sqlName(other)}] AS o ON d.${q(shared)} = o.${q(shared)}`]);
+    document.querySelectorAll('#codeLangs [data-lang]').forEach(b => b.classList.toggle('active', b.dataset.lang === codeLang));
+    $('#codeHelp').innerHTML = DLCode.LANGS[codeLang].help;
+    const ex = DLCode.examples(codeLang, d, types, S.datasets);
+    $('#codeExamples').innerHTML = '<option value="">Exemples…</option>' + ex.map(([l], i) => `<option value="${i}">${esc(l)}</option>`).join('');
+    const input = $('#codeInput');
+    if (input.dataset.lang !== codeLang) {
+      input.value = codeDrafts[codeLang] ?? DLCode.defaultCode(codeLang, d, types, S.datasets);
+      input.dataset.lang = codeLang;
     }
-    $('#sqlExamples').innerHTML = '<option value="">Exemples…</option>' + ex.map(([l, s]) => `<option value="${esc(s)}">${esc(l)}</option>`).join('');
+    if (!codeRunning) $('#codeInfo').textContent = DLCode.isLoaded(codeLang) ? '' : `${DLCode.LANGS[codeLang].name} sera téléchargé au premier lancement (une connexion Internet est nécessaire).`;
+  }
+
+  /** Tableau renvoyé par un moteur → jeu de données (noms de colonnes dédoublonnés). */
+  function codeTable(t) {
+    const names = [];
+    t.columns.forEach((c, i) => names.push(DT.uniqueName(names, String(c ?? '') || `colonne_${i + 1}`)));
+    let d = DT.ds(names, t.rows.map(r => Object.fromEntries(names.map((n, i) => [n, r[i] === undefined ? null : r[i]]))));
+    if (t.fromCSV) {
+      d = autoType(d);
+      const bools = d.columns.filter(c => d.rows.some(r => r[c] !== null) && d.rows.every(r => r[c] === null || r[c] === 'TRUE' || r[c] === 'FALSE'));
+      if (bools.length) d = DT.ds(d.columns, d.rows.map(r => { const o = { ...r }; for (const c of bools) if (o[c] !== null) o[c] = o[c] === 'TRUE'; return o; }));
+    }
+    return d;
+  }
+
+  async function runCode() {
+    if (codeRunning) return;
+    const code = $('#codeInput').value;
+    if (!code.trim()) return;
+    const lang = codeLang, info = $('#codeInfo'), out = $('#codeOutput');
+    codeRunning = true;
+    $('#btnRun').disabled = true;
+    out.hidden = true; out.classList.remove('err');
+    $('#codeImages').innerHTML = ''; $('#codeResult').hidden = true; $('#codeActions').hidden = true;
+    S.codeResult = null;
+    const t0 = performance.now();
+    try {
+      const res = await DLCode.run(lang, code, { data: S.data, datasets: S.datasets }, msg => { info.textContent = '⏳ ' + msg; });
+      const text = [res.output, res.text].filter(Boolean).join('\n').trim();
+      if (text) { out.textContent = text; out.hidden = false; }
+      $('#codeImages').innerHTML = res.images.map((src, i) => `<img src="${src}" alt="Graphique ${i + 1}">`).join('');
+      if (res.table) {
+        const d = codeTable(res.table);
+        S.codeResult = d;
+        $('#codeResult').innerHTML = tableHTML(d, 1000);
+        $('#codeResult').hidden = false;
+        $('#codeActions').hidden = false;
+        info.textContent = `✓ ${DLCode.LANGS[lang].name} · ${fmtInt(d.rows.length)} ligne(s) × ${d.columns.length} colonne(s) · ${Math.round(performance.now() - t0)} ms`;
+      } else info.textContent = `✓ ${DLCode.LANGS[lang].name} · ${Math.round(performance.now() - t0)} ms`;
+    } catch (e) {
+      out.textContent = e.message; out.classList.add('err'); out.hidden = false;
+      info.textContent = `✖ Erreur ${DLCode.LANGS[lang].name}`;
+    } finally {
+      codeRunning = false;
+      $('#btnRun').disabled = false;
+    }
   }
 
   // ---- jeux de données
@@ -940,12 +961,34 @@
     ['#chartType', '#chartX', '#chartAgg', '#chartSort', '#chartLimit', '#chartBins'].forEach(s => $(s).addEventListener('change', drawChart));
     $('#chartY').addEventListener('change', drawChart);
 
-    // SQL
-    $('#btnSql').onclick = runSql;
-    $('#sqlInput').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); runSql(); } });
-    $('#sqlExamples').onchange = e => { if (e.target.value) { $('#sqlInput').value = e.target.value; e.target.value = ''; runSql(); } };
-    $('#btnSqlApply').onclick = () => { if (S.sqlResult) { commit(S.sqlResult, `Requête SQL : ${$('#sqlInput').value.trim().slice(0, 80)}`); setTab('data'); } };
-    $('#btnSqlSave').onclick = () => S.sqlResult && saveAsDataset(S.sqlResult, 'requete');
+    // Code
+    $('#codeLangs').addEventListener('click', e => {
+      const b = e.target.closest('[data-lang]');
+      if (!b || b.dataset.lang === codeLang) return;
+      codeLang = b.dataset.lang; saveCodeState(); renderCode();
+    });
+    $('#btnRun').onclick = runCode;
+    $('#codeInput').addEventListener('input', e => { codeDrafts[codeLang] = e.target.value; saveCodeState(); });
+    $('#codeInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); runCode(); }
+      else if (e.key === 'Tab' && !e.shiftKey) { e.preventDefault(); document.execCommand('insertText', false, codeLang === 'python' ? '    ' : '  '); }
+    });
+    $('#codeExamples').onchange = e => {
+      if (e.target.value === '') return;
+      const ex = DLCode.examples(codeLang, S.data, colTypes(S.data), S.datasets)[+e.target.value];
+      e.target.value = '';
+      if (!ex) return;
+      $('#codeInput').value = ex[1]; codeDrafts[codeLang] = ex[1]; saveCodeState();
+      runCode();
+    };
+    $('#btnCodeApply').onclick = () => {
+      if (!S.codeResult) return;
+      const first = $('#codeInput').value.trim().split('\n').find(l => l.trim() && !/^\s*(#|--|\/\/)/.test(l)) || '';
+      commit(S.codeResult, `Code ${DLCode.LANGS[codeLang].name} : ${first.trim().slice(0, 70)}`);
+      setTab('data');
+    };
+    $('#btnCodeSave').onclick = () => S.codeResult && saveAsDataset(S.codeResult, `resultat_${codeLang}`);
+    $('#btnCodeExport').onclick = () => S.codeResult && openExport(S.codeResult, `resultat_${codeLang}`);
 
     // jeux de données & historique
     $('#btnSaveCurrent').onclick = () => saveAsDataset();
@@ -954,7 +997,7 @@
     $('#recipeInput').addEventListener('change', e => { if (e.target.files[0]) replayRecipe(e.target.files[0]); e.target.value = ''; });
     $('#btnReset').onclick = () => {
       if (!confirm('Effacer toutes les données, jeux enregistrés et l\'historique ?')) return;
-      Object.assign(S, { data: DT.ds([], []), name: '', datasets: {}, log: [], undo: [], redo: [], result: null, sqlResult: null, sort: null, search: '', view: null });
+      Object.assign(S, { data: DT.ds([], []), name: '', datasets: {}, log: [], undo: [], redo: [], result: null, codeResult: null, sort: null, search: '', view: null });
       try { localStorage.removeItem(STORE_KEY); } catch (e) { /* ignoré */ }
       closeTool(); refresh(); setTab('data');
     };

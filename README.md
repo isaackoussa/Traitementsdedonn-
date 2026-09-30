@@ -36,7 +36,13 @@ Cliquez sur **✨ Exemple** pour charger un jeu de ventes contenant des erreurs 
 - **Tableau** paginé : recherche, tri, édition de cellule (double-clic), ajout de ligne, menu d'actions par colonne (clic sur l'en-tête)
 - **Profil** : type, taux de remplissage, statistiques, histogrammes et valeurs fréquentes par colonne
 - **Graphiques** (12 types) : barres, barres horizontales/empilées, courbes, aires, nuage de points, secteurs, anneau, polaire, radar, histogramme, boîte à moustaches — export PNG
-- **SQL** (AlaSQL) sur le jeu actuel (`data`) et les jeux enregistrés, jointures multi-tables
+- **Code** sur les données, directement dans le navigateur, avec exemples prêts à l'emploi :
+  - **SQL** (AlaSQL) : table `data` + jeux enregistrés, jointures multi-tables
+  - **Python** (Pyodide, Python 3.14) : `df` est un DataFrame **pandas** ; numpy, matplotlib (graphiques affichés), scipy, scikit-learn, statsmodels… se chargent à l'import
+  - **R** (webR) : `df` est un data.frame, graphiques affichés, paquets CRAN via `webr::install("dplyr")`
+  - **JavaScript** : `df` est un tableau d'objets, accès au moteur DataLab (`DT.runTool(...)`)
+  - les jeux enregistrés sont accessibles (`datasets`), et le résultat peut remplacer les données, être enregistré ou exporté
+  - Python (~15 Mo) et R (~30 Mo) sont téléchargés au premier lancement puis mis en cache par le navigateur
 - **Annuler / rétablir** (Ctrl+Z / Ctrl+Y), historique des opérations
 - **Recettes** : export des étapes en JSON et rejeu sur un nouveau fichier (automatisation d'un nettoyage récurrent)
 - **Export** : CSV, CSV Excel français (`;` et décimales à virgule), TSV, Excel, ODS, JSON, JSON Lines, SQL, Markdown, HTML, XML, copie presse-papiers
@@ -69,6 +75,7 @@ Tant que `BREVO_API_KEY` et `MAIL_FROM` ne sont pas configurées, personne ne pe
 index.html        interface
 icon.svg, *.png   icône de l'app (+ manifest.webmanifest : installable sur mobile)
 css/style.css     styles (thèmes clair et sombre)
+js/code.js        exécution de code SQL / Python / R / JavaScript
 js/auth.js        barrière d'accès (e-mail + code) et console admin
 js/core.js        moteur : outils, statistiques, import/export (sans dépendance, testable sous Node)
 js/app.js         logique de l'interface
