@@ -1,0 +1,11 @@
+{
+  "name": "datalab",
+  "version": "1.0.0",
+  "description": "Application web locale de traitement de données : nettoyage, transformation, analyse, graphiques, SQL et export.",
+  "private": true,
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "test": "node --test tests/*.test.js"
+  },
+  "license": "MIT"
+}

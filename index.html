@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DataLab — Traitement de données</title>
+  <meta name="description" content="Nettoyer, transformer, analyser, visualiser et exporter des données directement dans le navigateur.">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧪</text></svg>">
+</head>
+<body>
+  <header class="topbar">
+    <button class="icon-btn only-mobile" id="btnMenu" title="Outils" aria-label="Afficher les outils">☰</button>
+    <div class="brand">🧪 <strong>DataLab</strong> <span class="muted" id="datasetName">— aucun jeu de données</span></div>
+    <div class="actions">
+      <label class="btn primary" title="CSV, TSV, TXT, JSON, Excel (xlsx, xls), ODS">
+        📂 Ouvrir<input type="file" id="fileInput" multiple accept=".csv,.tsv,.txt,.json,.xlsx,.xls,.xlsm,.ods" hidden>
+      </label>
+      <button class="btn" id="btnPaste" title="Coller des données">📋 Coller</button>
+      <button class="btn" id="btnUrl" title="Charger depuis une URL">🌐 URL</button>
+      <button class="btn" id="btnSample" title="Charger des données d'exemple">✨ Exemple</button>
+      <span class="sep"></span>
+      <button class="icon-btn" id="btnUndo" title="Annuler (Ctrl+Z)" aria-label="Annuler">↶</button>
+      <button class="icon-btn" id="btnRedo" title="Rétablir (Ctrl+Y)" aria-label="Rétablir">↷</button>
+      <button class="btn" id="btnExport" title="Exporter">💾 Exporter</button>
+      <button class="icon-btn" id="btnTheme" title="Thème clair / sombre" aria-label="Changer de thème">◐</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar" id="sidebar">
+      <input type="search" id="toolSearch" placeholder="🔎 Rechercher un outil…" aria-label="Rechercher un outil">
+      <nav id="toolList"></nav>
+    </aside>
+
+    <main class="main">
+      <div class="tabs" role="tablist" id="tabs">
+        <button role="tab" data-tab="data" class="active">Données</button>
+        <button role="tab" data-tab="profile">Profil</button>
+        <button role="tab" data-tab="chart">Graphiques</button>
+        <button role="tab" data-tab="sql">SQL</button>
+        <button role="tab" data-tab="result">Résultat <span class="badge" id="resultBadge" hidden>•</span></button>
+        <button role="tab" data-tab="datasets">Jeux de données</button>
+        <button role="tab" data-tab="history">Historique</button>
+      </div>
+
+      <section class="tab-panel active" id="tab-data">
+        <div class="toolbar">
+          <input type="search" id="tableSearch" placeholder="Rechercher dans le tableau…" aria-label="Rechercher dans le tableau">
+          <span class="muted" id="tableInfo"></span>
+          <span class="spacer"></span>
+          <button class="btn small" id="btnAddRow">+ Ligne</button>
+          <button class="btn small" id="btnSaveAs">Enregistrer sous…</button>
+          <label class="muted small">Lignes/page
+            <select id="pageSize"><option>50</option><option selected>100</option><option>250</option><option>1000</option></select>
+          </label>
+        </div>
+        <div class="table-wrap" id="tableWrap"></div>
+        <div class="pager" id="pager"></div>
+      </section>
+
+      <section class="tab-panel" id="tab-profile"><div id="profile" class="cards"></div></section>
+
+      <section class="tab-panel" id="tab-chart">
+        <div class="chart-controls" id="chartControls">
+          <label>Type
+            <select id="chartType">
+              <option value="bar">Barres</option><option value="barh">Barres horizontales</option><option value="stacked">Barres empilées</option>
+              <option value="line">Courbes</option><option value="area">Aires</option><option value="scatter">Nuage de points</option>
+              <option value="pie">Secteurs</option><option value="doughnut">Anneau</option><option value="polarArea">Polaire</option>
+              <option value="radar">Radar</option><option value="hist">Histogramme</option><option value="box">Boîte à moustaches</option>
+            </select>
+          </label>
+          <label>Axe X / catégories <select id="chartX"></select></label>
+          <label>Agrégation
+            <select id="chartAgg">
+              <option value="sum">Somme</option><option value="mean">Moyenne</option><option value="median">Médiane</option><option value="count_all">Nombre de lignes</option>
+              <option value="min">Minimum</option><option value="max">Maximum</option><option value="none">Aucune (valeurs brutes)</option>
+            </select>
+          </label>
+          <label>Tri
+            <select id="chartSort"><option value="x">Par X</option><option value="desc">Valeur décroissante</option><option value="asc">Valeur croissante</option><option value="none">Ordre des données</option></select>
+          </label>
+          <label>Max. catégories <input type="number" id="chartLimit" value="30" min="1" max="1000"></label>
+          <label>Classes (histogramme) <input type="number" id="chartBins" value="15" min="2" max="200"></label>
+          <fieldset class="ycols"><legend>Valeurs (Y)</legend><div id="chartY"></div></fieldset>
+          <div class="row">
+            <button class="btn primary" id="btnChart">Tracer</button>
+            <button class="btn" id="btnChartPng">Télécharger PNG</button>
+          </div>
+        </div>
+        <div class="chart-box"><canvas id="chartCanvas"></canvas><p class="muted" id="chartMsg"></p></div>
+      </section>
+
+      <section class="tab-panel" id="tab-sql">
+        <p class="muted">Interrogez vos données en SQL. Le jeu actuel est la table <code>data</code>, les jeux enregistrés sont disponibles sous leur nom (ex. <code>[mon jeu]</code>). Mettez entre crochets les noms contenant des espaces ou réservés (<code>[total]</code>, <code>[date]</code>…).</p>
+        <textarea id="sqlInput" rows="6" spellcheck="false">SELECT * FROM data LIMIT 20</textarea>
+        <div class="row">
+          <button class="btn primary" id="btnSql">▶ Exécuter (Ctrl+Entrée)</button>
+          <select id="sqlExamples"><option value="">Exemples…</option></select>
+          <span class="muted" id="sqlInfo"></span>
+        </div>
+        <div class="row" id="sqlActions" hidden>
+          <button class="btn" id="btnSqlApply">Remplacer les données par ce résultat</button>
+          <button class="btn" id="btnSqlSave">Enregistrer comme jeu de données</button>
+        </div>
+        <div class="table-wrap" id="sqlResult"></div>
+      </section>
+
+      <section class="tab-panel" id="tab-result">
+        <h3 id="resultTitle">Aucun résultat</h3>
+        <p class="muted">Les outils d'analyse affichent leurs résultats ici sans modifier vos données.</p>
+        <div class="row" id="resultActions" hidden>
+          <button class="btn" id="btnResultApply">Remplacer les données par ce résultat</button>
+          <button class="btn" id="btnResultSave">Enregistrer comme jeu de données</button>
+          <button class="btn" id="btnResultExport">Exporter</button>
+        </div>
+        <div class="table-wrap" id="resultTable"></div>
+      </section>
+
+      <section class="tab-panel" id="tab-datasets">
+        <div class="row">
+          <button class="btn primary" id="btnSaveCurrent">Enregistrer le jeu actuel</button>
+          <span class="muted">Les jeux enregistrés servent aux jointures, aux unions et aux requêtes SQL multi-tables.</span>
+        </div>
+        <div id="datasetList"></div>
+      </section>
+
+      <section class="tab-panel" id="tab-history">
+        <div class="row">
+          <button class="btn" id="btnHistUndo">↶ Annuler la dernière étape</button>
+          <button class="btn" id="btnExportRecipe">Exporter la recette (JSON)</button>
+          <label class="btn">Rejouer une recette<input type="file" id="recipeInput" accept=".json" hidden></label>
+          <button class="btn danger" id="btnReset">Tout effacer</button>
+        </div>
+        <ol id="historyList" class="history"></ol>
+      </section>
+    </main>
+
+    <aside class="drawer" id="drawer" aria-hidden="true">
+      <div class="drawer-head">
+        <h2 id="toolTitle">Outil</h2>
+        <button class="icon-btn" id="btnCloseTool" aria-label="Fermer">✕</button>
+      </div>
+      <p class="muted" id="toolDesc"></p>
+      <form id="toolForm" autocomplete="off"></form>
+      <div class="drawer-foot">
+        <label class="small"><input type="checkbox" id="livePreview" checked> Aperçu en direct</label>
+        <span class="spacer"></span>
+        <button class="btn primary" id="btnApply">Appliquer</button>
+      </div>
+      <div id="toolError" class="error" hidden></div>
+      <div id="toolPreview" class="preview"></div>
+    </aside>
+  </div>
+
+  <footer class="statusbar"><span id="status">Prêt.</span><span class="spacer"></span><span id="dims"></span></footer>
+
+  <dialog id="modal">
+    <form method="dialog" id="modalForm">
+      <h2 id="modalTitle"></h2>
+      <div id="modalBody"></div>
+      <div class="row end">
+        <button value="cancel" class="btn" formnovalidate>Annuler</button>
+        <button value="ok" class="btn primary" id="modalOk">OK</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="ctx-menu" id="ctxMenu" hidden></div>
+  <div class="toast" id="toast" hidden></div>
+
+  <!-- Bibliothèques embarquées (fonctionnement hors ligne) -->
+  <script src="vendor/papaparse.min.js"></script>
+  <script src="vendor/chart.umd.min.js"></script>
+  <script src="vendor/alasql.min.js"></script>
+  <!-- SheetJS : version à jour depuis le CDN officiel, copie locale en secours hors ligne -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <script>window.XLSX || document.write('<script src="vendor/xlsx.full.min.js"><\/script>');</script>
+  <script src="js/core.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
